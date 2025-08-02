@@ -1,7 +1,8 @@
+import sys
 import yaml
 from pathlib import Path
 
-APPLICATION_NAME = 'Temperature Logger'
+APPLICATION_NAME = 'DS18B20 Temperature Logger'
 
 def get_sensor_config() -> dict[str,dict[str,str]]:
     """
@@ -68,3 +69,12 @@ def _get_sensor_config_file_directory() -> Path:
 def _get_sensor_config_file_path() -> Path:
     config_file_path = _get_sensor_config_file_directory() / 'config.yaml'
     return config_file_path
+
+
+def main():
+    print(f"Python version: {sys.version_info.major}.{sys.version_info.minor}")
+    get_sensor_config()
+
+
+if __name__ == '__main__':
+    main()
