@@ -4,4 +4,6 @@ version = "0.1.0"
 description = "Temperature logger RPI with DS18B20"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "pyyaml>=6.0.2",
+]

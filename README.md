@@ -7,9 +7,11 @@ DS18B20 temperature sensor<br>
 One Wire, pin 7 / 4k7 pull-up to 3V3<br>
 GND, pin 9<br>
 3V3, pin 17<br>
-https://www.youngwonks.com/blog/Raspberry-Pi-3-Pinout
+
+[Raspberry HW pinout](]https://www.youngwonks.com/blog/Raspberry-Pi-3-Pinout)
 
 ## Enable the 1-Wire Interface
+
 The Raspberry Pi's operating system needs to have the 1-Wire interface enabled.<br>
 Open Terminal: On your Raspberry Pi, open a terminal window.<br>
 Run raspi-config: Type sudo raspi-config and press Enter.<br>
@@ -17,8 +19,16 @@ Use the arrow keys to navigate to Interface Options.<br>
 Select 1-Wire.<br>
 Select Yes to enable the 1-Wire interface.<br>
 Select Finish.<br>
-Reboot: sudo boot
+Reboot: ```sudo boot```<br>
 
 ## Install UV on Raspberry Pi
 
-[Install uv with Snap](https://snapcraft.io/install/astral-uv/raspbian)
+[Install uv on RPI with Snap](https://snapcraft.io/install/astral-uv/raspbian)
+
+
+## Copy Application to Raspberry Pi from PC
+
+Install **just** according to: [installation of just](https://github.com/christianhansenx/hansen-developer-notes/blob/main/tools-and-apps/just/README.MD)
+
+Execute:
+```just copy```

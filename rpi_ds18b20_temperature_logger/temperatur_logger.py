@@ -1,4 +1,3 @@
-import sys
 import yaml
 from pathlib import Path
 
@@ -15,12 +14,14 @@ def get_sensor_config() -> dict[str,dict[str,str]]:
     if config_file_path.exists():
         with open(config_file_path, 'r') as yaml_file:
             config_data = yaml.safe_load(yaml_file)
+        print(f'Temperature sensor definations were read from: {config_file_path}')
         return config_data
     config_data = []
     sensor_ids = _get_w1_sensor_ids()
     for index, sensor_id in enumerate(sensor_ids):
         config_data.append({'name': f'T#{index+1}', 'id': sensor_id})
-    print(f'Temperature sensors have been been detected and stored to {config_file_path}')
+    generate_sensor_config(config_data)
+    print(f'Temperature sensor(s) have been been detected and stored to {config_file_path}')
     return config_data
 
 
@@ -34,10 +35,7 @@ def generate_sensor_config(sensors: dict[str,dict[str,str]]) -> None:
     """
     config_data = {}
     for sensor in sensors:
-        config_data[sensor['name']] = {
-            'id': sensor['id'],
-            'type': 'temperature_sensor'
-        }
+        config_data[sensor['name']] = {'id': sensor['id']}
     _get_sensor_config_file_directory().mkdir(parents=True, exist_ok=True)
     with open(_get_sensor_config_file_path(), 'w') as yaml_file:
         yaml.dump(config_data, yaml_file, sort_keys=False)
@@ -48,8 +46,8 @@ def _get_w1_sensor_ids() -> list[str]:
     Reads and returns a list of 1-Wire sensor IDs from /sys/bus/w1/devices.
 
     Returns:
-        list: A list of strings, where each string is a sensor ID (e.g., '28-000000000001').
-              Returns an empty list if no sensors are found or the directory doesn't exist.
+        A list of strings, where each string is a sensor ID (e.g., '28-000000000001').
+            Returns an empty list if no sensors are found or the directory doesn't exist.
     """
     w1_devices_directory = Path('/sys/bus/w1/devices')
     sensor_ids = []
@@ -69,12 +67,3 @@ def _get_sensor_config_file_directory() -> Path:
 def _get_sensor_config_file_path() -> Path:
     config_file_path = _get_sensor_config_file_directory() / 'config.yaml'
     return config_file_path
-
-
-def main():
-    print(f"Python version: {sys.version_info.major}.{sys.version_info.minor}")
-    get_sensor_config()
-
-
-if __name__ == '__main__':
-    main()

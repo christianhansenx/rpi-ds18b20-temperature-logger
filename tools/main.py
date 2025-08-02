@@ -148,7 +148,7 @@ def _load_or_create_config():
 
 
 def main():
-    print(f"Python version: {sys.version_info.major}.{sys.version_info.minor}")
+    print(f'Python version: {sys.version_info.major}.{sys.version_info.minor}')
 
     parser = argparse.ArgumentParser(description='Raspberry Pi Temperature Logger Tools')
     parser.add_argument(
