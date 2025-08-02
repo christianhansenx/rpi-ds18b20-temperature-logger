@@ -19,7 +19,7 @@ def upload_app_to_rpi() -> bool:
         _sftp_upload_recursive(config, exclude=all_exclude_patterns)
         return True
     finally:
-        if 'ssh_client' in locals() is not None:
+        if 'ssh_client' in locals():
             ssh_client.close()
 
 
@@ -100,8 +100,8 @@ def main():
     )
     args = parser.parse_args()
     if args.copy_code_to_rpi:
-        sucess = upload_app_to_rpi()
-    if sucess:
+        success = upload_app_to_rpi()
+    if success:
         print('SUCCESS!')
 
 
