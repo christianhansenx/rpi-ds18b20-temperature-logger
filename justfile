@@ -3,4 +3,4 @@ TOOLS_PATH := "tools"
 
 # Test of uv
 copy:
-    @uv run --project "{{TOOLS_PATH}}" python "{{TOOLS_PATH}}"/main.py
+    @uv run --project "{{TOOLS_PATH}}" python "{{TOOLS_PATH}}"/main.py --copy-code-to-rpi
