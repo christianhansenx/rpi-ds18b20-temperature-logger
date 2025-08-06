@@ -1,0 +1,9 @@
+[project]
+name = "rpi-ds18b20-temperature-logger"
+version = "0.1.0"
+description = "RPI Temperature logger with DS18B20"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "pyyaml>=6.0.2",
+]
