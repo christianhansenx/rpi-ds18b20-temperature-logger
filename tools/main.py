@@ -1,14 +1,16 @@
+import argparse
 import sys
 import time
-import argparse
 
-from ssh_client import SshClientHandler, SshClient
+from ssh_client import SshClient, SshClientHandler
 
 CONFIG_FILE = 'rpi_host_config.yaml'
 LOCAL_PROJECT_DIRECTORY = 'rpi_ds18b20_temperature_logger'
 RPI_LOGGER_PROCESS_NAME = f'{LOCAL_PROJECT_DIRECTORY}/.venv/bin/python3 main.py'
 TMUX_SESSION_NAME = 'tlog'
 TMUX_LOG_PATH = f'/tmp/{LOCAL_PROJECT_DIRECTORY}.tmux-log'
+UPLOAD_EXCLUDES_FOLDERS = ['.venv', '.git', '.ruff_cache', '__pycache__']
+UPLOAD_EXCLUDES_FILES = []  # Add specific file names here if needed
 
 
 class FailedToRunRpiTmux(Exception):
@@ -35,9 +37,8 @@ def rpi_check_logger(ssh_client: SshClient, process_name: str, message_no_proces
     if valid_proc_ids:
         print(f'Process "{process_name}" running')
         print(f'Found existing PID(s): {", ".join(valid_proc_ids)}')
-    else:
-        if message_no_process:
-            print(f'No existing process found for "{process_name}"')
+    elif message_no_process:
+        print(f'No existing process found for "{process_name}"')
     return valid_proc_ids
 
 
@@ -45,7 +46,7 @@ def rpi_kill_logger(ssh_client: SshClient, process_name: str, valid_proc_ids: li
 
     if valid_proc_ids:
         for pid in valid_proc_ids:
-            kill_cmd = f"kill {pid}"
+            kill_cmd = f'kill {pid}'
             stdin, stdout_kill, stderr_kill = ssh_client.client.exec_command(kill_cmd)
             exit_status = stdout_kill.channel.recv_exit_status()
             if exit_status != 0:
@@ -80,7 +81,7 @@ def rpi_tmux(ssh_client: SshClient, restart_application: bool = False):
         if exit_code != 0:
             raise FailedToRunRpiTmux(
                 f'Could not open tmux session "{TMUX_SESSION_NAME}" on {ssh_client.connection}:'
-                f'\n{stderr.read().decode().strip()}'
+                f'\n{stderr.read().decode().strip()}',
             )
         tmux_check_pipe = f'tmux display-message -p -t {TMUX_SESSION_NAME}:0.0 "#{{pane_pipe}}"'
         stdin, stdout, stderr = ssh_client.client.exec_command(tmux_check_pipe)
@@ -102,7 +103,7 @@ def rpi_tmux(ssh_client: SshClient, restart_application: bool = False):
             sftp.stat(TMUX_LOG_PATH)
             sftp_client = sftp
             break
-        except IOError as e:
+        except OSError as e:
             if e.errno == 2:  # File not found
                 time.sleep(0.5)
             else:
@@ -130,10 +131,9 @@ def rpi_tmux(ssh_client: SshClient, restart_application: bool = False):
 
 
 def _install_tmux(ssh_client):
+    """Installs tmux on the remote Raspberry Pi (if not already installed).
     """
-    Installs tmux on the remote Raspberry Pi (if not already installed).
-    """
-    stdin, stdout, stderr = ssh_client.client.exec_command("which tmux")
+    stdin, stdout, stderr = ssh_client.client.exec_command('which tmux')
     exit_code = stdout.channel.recv_exit_status()
     if exit_code != 0:
         print(f'Installing tmux on {ssh_client.client.connection}')
@@ -150,9 +150,7 @@ def _install_tmux(ssh_client):
 
 
 def rpi_upload_app(ssh_client: SshClient):
-    exclude_folders = ['.venv', '.git', '__pycache__']
-    exclude_files = []  # Add specific file names here if needed
-    all_exclude_patterns = exclude_folders + exclude_files
+    all_exclude_patterns = UPLOAD_EXCLUDES_FOLDERS + UPLOAD_EXCLUDES_FILES
     ssh_client.upload_recursive(LOCAL_PROJECT_DIRECTORY, all_exclude_patterns)
 
 

@@ -25,3 +25,7 @@ sync:
 # RPI: Live stream from Raspberry Pi device tmux session
 tmux:
     @uv run --quiet --project "{{TOOLS_PATH}}" python "{{TOOLS_PATH}}"/main.py --rpi-tmux
+
+# Check linting with ruff
+ruff:
+    @uv run --quiet ruff check --unsafe-fixes
