@@ -1,10 +1,11 @@
 import argparse
 import sys
 import time
+from pathlib import Path
 
 from ssh_client import SshClient, SshClientHandler
 
-CONFIG_FILE = 'rpi_host_config.yaml'
+CONFIG_FILE = Path('rpi_host_config.yaml')
 LOCAL_PROJECT_DIRECTORY = 'rpi_ds18b20_temperature_logger'
 RPI_LOGGER_PROCESS_NAME = f'{LOCAL_PROJECT_DIRECTORY}/.venv/bin/python3 main.py'
 TMUX_SESSION_NAME = 'tlog'
