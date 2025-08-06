@@ -29,3 +29,6 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "pyyaml", specifier = ">=6.0.2" }]
+
+[package.metadata.requires-dev]
+dev = []
