@@ -39,10 +39,6 @@ If you are on Windows, then run the just recipes in Git Bash (download from  [gi
 
 ## TODO
 
-Use paramiko.SSHConfig or paramiko.SSHConfigDict
-
-- make a new git branch
-
 - Log CPU temperature
 - Use DuckDB
 - Send to Google Drive
