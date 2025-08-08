@@ -12,7 +12,7 @@ check:
 
 # RPI: Killing running logger application on Raspberry Pi device
 stop:
-    @exec uv run --quiet --project "{{TOOLS_PATH}}" python "{{TOOLS_PATH}}"/main.py --rpi-kill-logger
+    @uv run --quiet --project "{{TOOLS_PATH}}" python "{{TOOLS_PATH}}"/main.py --rpi-kill-logger
 
 # RPI: Starting logger application on Raspberry Pi device (first it will kill already running logger app) 
 start:
