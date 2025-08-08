@@ -8,11 +8,11 @@ list-recipes:
 
 # RPI: Checking about logger application is already running on Raspberry Pi device
 check:
-    @uv run --project "{{TOOLS_PATH}}" python "{{TOOLS_PATH}}"/main.py --rpi-check-logger
+    @uv run --quiet --project "{{TOOLS_PATH}}" python "{{TOOLS_PATH}}"/main.py --rpi-check-logger
 
 # RPI: Killing running logger application on Raspberry Pi device
 stop:
-    @exec uv run --project "{{TOOLS_PATH}}" python "{{TOOLS_PATH}}"/main.py --rpi-kill-logger
+    @exec uv run --quiet --project "{{TOOLS_PATH}}" python "{{TOOLS_PATH}}"/main.py --rpi-kill-logger
 
 # RPI: Starting logger application on Raspberry Pi device (first it will kill already running logger app) 
 start:
@@ -20,7 +20,7 @@ start:
 
 # RPI: Copying logger application to Raspberry Pi device and then starting application
 sync:
-    @uv run --project "{{TOOLS_PATH}}" python "{{TOOLS_PATH}}"/main.py --rpi-copy-code
+    @uv run --quiet --project "{{TOOLS_PATH}}" python "{{TOOLS_PATH}}"/main.py --rpi-copy-code
 
 # RPI: Live stream from Raspberry Pi device tmux session
 tmux:
@@ -28,4 +28,4 @@ tmux:
 
 # Check linting with ruff
 ruff:
-    @uv run --quiet ruff check --unsafe-fixes
+    @uv run --quiet ruff check

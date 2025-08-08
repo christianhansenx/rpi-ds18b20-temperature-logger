@@ -43,11 +43,11 @@ Some of the connections to th RPI is using [tmux](https://github.com/tmux/tmux/w
 
 ## TODO
 
-- Log CPU temperature
 - Use SQL
 - Flask server
 - activate w1 by CLI commands https://github.com/ronanguilloux/temperature-pi/blob/master/README.md
 - check this https://github.com/alberttxu/Raspberry-PI-Web-Temperature-Logger---ds18b20
+- ram disk for TMUX_LOG_PATH = f'/tmp/{LOCAL_PROJECT_DIRECTORY}.tmux-log'
 - Sudo
 ```
 import paramiko

@@ -102,7 +102,7 @@ class Ds18b20TemperatureSensor(TemperatureSensor):
         else:
             temp_string = lines[1][equals_pos+2:]
             try:
-                temp_c = float(temp_string) / 1000.0
+                temp_c = round(float(temp_string) / 1000.0, 1)
                 return temp_c, ''
             except ValueError:
                 return None, 'TemperatureValueError'
@@ -128,7 +128,7 @@ class CpuTemperatureSensor(TemperatureSensor):
         if lines is None:
             return None, status
         try:
-            return float(lines[0]) / 1000.0, ''
+            return round(float(lines[0]) / 1000.0, 1), ''
         except ValueError:
             return None, 'CpuTemperatureValueError'
 
@@ -211,7 +211,8 @@ class TemperatureLogger:
             self._file_logger = self._setup_file_logger()
             _terminal_logger.info(f"New log file created for {current_date}")
 
-    def _get_sensors(self) -> list[TemperatureSensor]:
+    @classmethod
+    def _get_sensors(cls) -> list[TemperatureSensor]:
         """Reads and parses the YAML configuration file."""
 
         def _create_sensors(config_data):
@@ -235,7 +236,7 @@ class TemperatureLogger:
         sensors_config = config_data[CONFIG_TEMPERATURE_SENSORS_KW]
 
         # DS18B20 sensors
-        sensor_ids = self._get_w1_sensor_ids()
+        sensor_ids = cls._get_w1_sensor_ids()
         for index, sensor_id in enumerate(sensor_ids):
             sensors_config[f'{DEFAULT_SENSOR_NAME}{index+1}'] = {'id': sensor_id, 'sensor_type': DS18B20_SENSOR_TYPE}
 
@@ -243,10 +244,11 @@ class TemperatureLogger:
         sensors_config[CPU_TEMPERATURE_NAME] = {'sensor_type': CPU_TEMPERATURE_SENSOR_TYPE}
 
         sensors = _create_sensors(config_data)
-        self._generate_sensor_config(sensors)
+        cls._generate_sensor_config(sensors)
         return sensors
 
-    def _generate_sensor_config(self, sensors: list[TemperatureSensor]) -> None:
+    @staticmethod
+    def _generate_sensor_config(sensors: list[TemperatureSensor]) -> None:
         """Generates and saves a YAML configuration."""
         config_data = {
             CONFIG_TEMPERATURE_SENSORS_KW: {
