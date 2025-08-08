@@ -1,7 +1,7 @@
 # rpi-ds18b20-temperature-logger
 Temperature logger for Raspberry Pi with DS18B20 temperature sensors
 
-## Hardware Connections
+## Raspberry Pi Hardware Connections
 
 DS18B20 temperature sensor<br>
 One Wire, pin 7 / 4k7 pull-up to 3V3<br>
@@ -25,7 +25,7 @@ Reboot: ```sudo reboot```<br>
 
 [Install uv on RPI with Snap](https://snapcraft.io/install/astral-uv/raspbian)
 
-## Install just
+## Install "just" on the PC
 
 Install **just** according to: [installation of just](https://github.com/christianhansenx/hansen-developer-notes/blob/main/tools-and-apps/just/README.MD)
 
@@ -36,10 +36,46 @@ If you are on Windows, then run the just recipes in Git Bash (download from  [gi
 
 ## Interfacing with Raspberry Pi from PC
 
+Instead of having to SSH into the RPI, then many operations can be applied by using the just recipes in **justfile**.
+To get a list of RPI tool commands then just execute ```just``` without arguments and look for recipes where comment begins with **# RPI:**.
+
+Some of the connections to th RPI is using [tmux](https://github.com/tmux/tmux/wiki) terminal on the RPI. There is no need to install it - it will be done automatic from the tools commands.
 
 ## TODO
 
 - Log CPU temperature
-- Use DuckDB
-- Send to Google Drive
+- Use SQL
 - Flask server
+- activate w1 by CLI commands https://github.com/ronanguilloux/temperature-pi/blob/master/README.md
+- check this https://github.com/alberttxu/Raspberry-PI-Web-Temperature-Logger---ds18b20
+- Sudo
+```
+import paramiko
+
+hostname = 'your_hostname'
+username = 'your_username'
+password = 'your_password'
+sudo_password = 'your_sudo_password'
+command = 'sudo ls -l /root'
+
+try:
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    client.connect(hostname, username=username, password=password)
+
+    stdin, stdout, stderr = client.exec_command(command)
+
+    # Write the sudo password to stdin
+    stdin.write(sudo_password + '\n')
+    stdin.flush()
+
+    # Read the output and errors
+    output = stdout.read().decode('utf-8')
+    error = stderr.read().decode('utf-8')
+
+    print("Command Output:\n", output)
+    print("Command Error:\n", error)
+
+finally:
+    client.close()
+```

@@ -12,90 +12,125 @@ APPLICATION_FILE_FOLDER = Path(__file__).resolve().parent.name
 DEFAULT_SENSOR_NAME = 'T#'
 CONFIG_DIR = Path.home() / '.config' / APPLICATION_FILE_FOLDER
 CONFIG_PATH = CONFIG_DIR / 'config.yaml'
-LOG_DIR = Path.home() / './tlogs' / APPLICATION_FILE_FOLDER
+CONFIG_TEMPERATURE_SENSORS_KW = 'temperature_sensors'
+LOG_DIR = Path.home() / './tlogs'
+
 ONE_WIRE_DEVICES = Path('/sys/bus/w1/devices')
+DS18B20_SENSOR_TYPE = 'DS18B20'
+CPU_TEMPERATURE_NAME = 'CPU'
+CPU_TEMPERATURE_SENSOR_TYPE = 'RPI-CPU'
 
 _terminal_logger = logging.getLogger(f'{__name__}-terminal')
 _terminal_logger.setLevel(logging.INFO)
 if not _terminal_logger.handlers:
     _handler = logging.StreamHandler(sys.stdout)
-    _handler.setFormatter(logging.Formatter(fmt='%(asctime)s %(message)s', datefmt='%H:%M:%S'))
+    _handler.setFormatter(logging.Formatter(fmt='%(asctime)s\t%(message)s', datefmt='%Y-%m-%d\t%H:%M:%S'))
     _terminal_logger.addHandler(_handler)
 
-
 class TemperatureSensor:
-    """Represents a DS18B20 temperature sensor and handles reading its data."""
 
-    def __init__(self, id: str, name: str) -> None:
-        """
-        Initializes a TemperatureSensor instance.
-
-        Args:
-            id: The unique 1-Wire ID of the sensor.
-            name: The user-defined name for the sensor.
-        """
-        self._id = id
+    def __init__(self, name: str, id: str, sensor_type: str, devices: Path, device_file: Path) -> None:
         self._name = name
-        self._status_message = ''
+        self._id = id
+        self._sensor_type = sensor_type
+        self._sensor_file_path = devices / Path(self._id) / device_file
+
+    def read_temperature(self) -> tuple[float|None,str]:
+        """This method must be implemented by all subclasses."""
+        raise NotImplementedError("Subclasses must implement this method.")
+
+    def read_temperature_raw(self) -> tuple[list[str],str]:
+        """
+        Reads the raw data lines from device file.
+        """
+        try:
+            with open(self._sensor_file_path) as f:
+                lines = f.readlines()
+            return lines, ''
+        except FileNotFoundError:
+            return None, 'SensorNotFound'
+        except Exception as e:
+            return None, f'UnexpectedError[{e}]'
 
     def get_name(self) -> str:
         """Returns the user-defined name of the sensor."""
         return self._name
 
+    def get_type(self) -> str:
+        """Returns the the sensor type."""
+        return self._sensor_type
+
     def get_id(self) -> str:
         """Returns the 1-Wire ID of the sensor."""
         return self._id
 
-    def read_temperature(self) -> float | None:
+
+class Ds18b20TemperatureSensor(TemperatureSensor):
+    """Represents a DS18B20 temperature sensor and handles reading its data."""
+
+    def __init__(self, name: str, id: str) -> None:
+        """
+        Initializes a instance for a DS18B20 sensor.
+
+        Args:
+            id: The unique 1-Wire ID of the sensor.
+            name: The user-defined name for the sensor.
+        """
+        super().__init__(name, id, DS18B20_SENSOR_TYPE, ONE_WIRE_DEVICES, Path('w1_slave'))
+
+    def read_temperature(self) -> tuple[float|None,str]:
         """
         Parses the raw data from the DS18B20 sensor file to extract the temperature in Celsius.
         It retries reading if the initial CRC check fails ('YES' not found in the first line).
         """
         retries = 5
         while True:
-            lines = self._read_temperature_raw()
+            lines, status = self.read_temperature_raw()
             if lines is None:
-                return None
+                return None, status
             if lines[0].strip()[-3:] == 'YES':
                 break
-            self._status_message = 'SensorDataCorrupted'
             time.sleep(0.2)
             if retries == 0:
-                return None
+                return None, 'SensorDataCorrupted'
             retries -= 1
 
+        # The second line contains 't=' followed by the temperature in millidegrees Celsius.
         equals_pos = lines[1].find('t=')
         if equals_pos == -1:
-            self._status_message = 'TemperatureValueMissing'
-            return None
-        if equals_pos != -1:
+            return None, 'TemperatureValueMissing'
+        else:
             temp_string = lines[1][equals_pos+2:]
             try:
                 temp_c = float(temp_string) / 1000.0
-                return temp_c
+                return temp_c, ''
             except ValueError:
-                self._status_message = 'TemperatureValueError'
-        return None
+                return None, 'TemperatureValueError'
 
-    def get_status_message(self) -> str:
-        """Returns a status message if an error occurred during the last read attempt."""
-        status = f'{self._name}:{self._status_message}' if self._status_message else ''
-        return status
 
-    def _read_temperature_raw(self):
+class CpuTemperatureSensor(TemperatureSensor):
+    """Represents RPI temperature sensor and handles reading its data."""
+
+    def __init__(self, name: str) -> None:
         """
-        Reads the raw data lines from a DS18B20 sensor's w1_slave file.
+        Initializes a instance for RPI CPU temperature sensor.
+
+        Args:
+            name: The user-defined name for the sensor.
         """
+        super().__init__(name, 'thermal_zone0', CPU_TEMPERATURE_SENSOR_TYPE, Path('/sys/class/thermal'), Path('temp'))
+
+    def read_temperature(self) -> tuple[float|None,str]:
+        """
+        Read RPI CPU temperature.
+        """
+        lines, status = self.read_temperature_raw()
+        if lines is None:
+            return None, status
         try:
-            with open(ONE_WIRE_DEVICES / Path(self._id) / 'w1_slave') as f:
-                lines = f.readlines()
-            return lines
-        except FileNotFoundError:
-            self._status_message = 'SensorNotFound'
-            return None
-        except Exception as e:
-            self._status_message = f'UnexpetedError[{e}]'
-            return None
+            return float(lines[0]) / 1000.0, ''
+        except ValueError:
+            return None, 'CpuTemperatureValueError'
 
 
 class TemperatureLogger:
@@ -129,20 +164,21 @@ class TemperatureLogger:
         file_line_fields = []
         overall_status = []
         for sensor in self._sensors:
-            temperature = sensor.read_temperature()
-            temperature_text = 'None' if temperature is None else f'{temperature:.2f}'
+            temperature, status = sensor.read_temperature()
+            temperature_text = 'None' if temperature is None else f'{temperature:.1f}'
             terminal_line_fields.append(f'{sensor.get_name()} {temperature_text:>6}')
-            file_line_fields.append(f'{sensor.get_name()}={temperature_text}')
+            file_line_fields.append(f'{sensor.get_name()}\t{temperature_text}')
+            if status:
+                overall_status.append(f'{sensor.get_name()}:{status}')
 
-            if status := sensor.get_status_message():
-                overall_status.append(status)
-
-        terminal_line = ', '.join(terminal_line_fields)
-        file_line = ', '.join(file_line_fields)
+        terminal_line = '\t'.join(terminal_line_fields)
+        file_line = '\t'.join(file_line_fields)
 
         if overall_status:
-            terminal_line += f', ERROR: {", ".join(overall_status)}'
-            file_line += f', ERROR:{", ".join(overall_status)}'
+            terminal_line += f'\tERROR: {", ".join(overall_status)}'
+            file_line += f'\tERROR: {", ".join(overall_status)}'
+        else:
+            file_line += '\tOK'
 
         _terminal_logger.info(terminal_line)
         self._file_logger.info(file_line)
@@ -164,7 +200,7 @@ class TemperatureLogger:
             filename=log_file_path,
             mode='a'
         )
-        handler.setFormatter(logging.Formatter(fmt='%(asctime)s %(message)s', datefmt='%Y-%m-%dT%H:%M:%S%z'))
+        handler.setFormatter(logging.Formatter(fmt='%(asctime)s\t%(message)s', datefmt='%Y-%m-%dT%H:%M:%S%z'))
         file_logger.addHandler(handler)
         return file_logger
 
@@ -177,26 +213,49 @@ class TemperatureLogger:
 
     def _get_sensors(self) -> list[TemperatureSensor]:
         """Reads and parses the YAML configuration file."""
+
         def _create_sensors(config_data):
-            return [TemperatureSensor(id, name) for name, id in config_data.items()]
+            sensors_config = config_data[CONFIG_TEMPERATURE_SENSORS_KW]
+            sensors = []
+            for name, sensor_data in sensors_config.items():
+                if sensor_data['sensor_type'] == DS18B20_SENSOR_TYPE:
+                    sensors.append(Ds18b20TemperatureSensor(name, sensor_data['id']))
+                else:
+                    if sensor_data['sensor_type'] == CPU_TEMPERATURE_SENSOR_TYPE:
+                        sensors.append(CpuTemperatureSensor(name))
+            return sensors
 
         if CONFIG_PATH.exists():
             with open(CONFIG_PATH) as yaml_file:
                 config_data = yaml.safe_load(yaml_file)
-            _terminal_logger.info(f"Temperature sensor ID's were read from: {CONFIG_PATH}")
+            _terminal_logger.info(f'Temperature sensor ID\'s were read from: {CONFIG_PATH}')
             return _create_sensors(config_data)
 
-        config_data = {}
+        config_data = {CONFIG_TEMPERATURE_SENSORS_KW: {}}
+        sensors_config = config_data[CONFIG_TEMPERATURE_SENSORS_KW]
+
+        # DS18B20 sensors
         sensor_ids = self._get_w1_sensor_ids()
         for index, sensor_id in enumerate(sensor_ids):
-            config_data[f'{DEFAULT_SENSOR_NAME}{index+1}'] = sensor_id
+            sensors_config[f'{DEFAULT_SENSOR_NAME}{index+1}'] = {'id': sensor_id, 'sensor_type': DS18B20_SENSOR_TYPE}
+
+        # RPI CPU sensor
+        sensors_config[CPU_TEMPERATURE_NAME] = {'sensor_type': CPU_TEMPERATURE_SENSOR_TYPE}
+
         sensors = _create_sensors(config_data)
         self._generate_sensor_config(sensors)
         return sensors
 
     def _generate_sensor_config(self, sensors: list[TemperatureSensor]) -> None:
         """Generates and saves a YAML configuration."""
-        config_data = {sensor.get_name(): sensor.get_id() for sensor in sensors}
+        config_data = {
+            CONFIG_TEMPERATURE_SENSORS_KW: {
+                sensor.get_name(): {
+                    'id': sensor.get_id(), 'sensor_type': sensor.get_type()
+                }
+                for sensor in sensors
+            }
+        }
         CONFIG_DIR.mkdir(parents=True, exist_ok=True)
         with open(CONFIG_PATH, 'w') as yaml_file:
             yaml.dump(config_data, yaml_file, sort_keys=False)
@@ -205,4 +264,6 @@ class TemperatureLogger:
     @staticmethod
     def _get_w1_sensor_ids() -> list[str]:
         """Reads list of 1-Wire sensor IDs from the system."""
-        return [device.name for device in ONE_WIRE_DEVICES.iterdir() if device.is_dir() and device.name.startswith('28-')]
+        return [
+            device.name for device in ONE_WIRE_DEVICES.iterdir() if device.is_dir() and device.name.startswith('28-')
+        ]
