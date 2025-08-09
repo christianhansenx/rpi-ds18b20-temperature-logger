@@ -1,3 +1,4 @@
+"""Logger application."""
 import sys
 import time
 from pathlib import Path
@@ -5,11 +6,9 @@ from pathlib import Path
 from specifications import parse_specifications_from_readme
 from temperature_logger import TemperatureLogger
 
-from pathlib import Path
-from pydantic import BaseModel
 
-
-def main():
+def main() -> None:
+    """Run logger application."""
     print('== rpi-ds18b20-temperature-logger ==')
     print(f'Python version: {sys.version_info.major}.{sys.version_info.minor}')
 

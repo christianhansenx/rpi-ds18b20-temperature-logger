@@ -18,6 +18,8 @@ line-length = 130
 select = ["ALL", "Q"]
 ignore = [
     "T201", # print
+    "D203", # incorrect-blank-line-before-class (conflicting with D211 `no-blank-line-before-class`)
+    "D213", # multi-line-summary-second-line (conflicting with D212 `multi-line-summary-first-line`)
 ]
 
 [tool.ruff.lint.flake8-quotes]

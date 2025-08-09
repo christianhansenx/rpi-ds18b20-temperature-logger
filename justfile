@@ -29,3 +29,7 @@ tmux:
 # Check linting with ruff
 ruff:
     @uv run --quiet ruff check
+
+# Fix linting with ruff
+ruff-fix:
+    @uv run --quiet ruff check --fix
