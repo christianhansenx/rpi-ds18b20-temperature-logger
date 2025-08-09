@@ -2,6 +2,7 @@
 import argparse
 import errno
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -99,7 +100,7 @@ def rpi_tmux(ssh_client: SshClient, *, restart_application: bool = False) -> Non
 def _tmux_terminal(ssh_client: SshClient, *, restart_application: bool) -> None:
     tmux_session_msg = (
         f'\ntmux session "{TMUX_SESSION_NAME}" is running on {ssh_client.connection}, to access it from rpi terminal:'
-        f'\n\ttmux attach -t {TMUX_SESSION_NAME}'
+        f' tmux attach -t {TMUX_SESSION_NAME}'
         '\n'
     )
 
@@ -126,17 +127,34 @@ def _tmux_terminal(ssh_client: SshClient, *, restart_application: bool) -> None:
         remote_dir = f'/home/{ssh_client.username}/{LOCAL_PROJECT_DIRECTORY}'
         command = f'cd {remote_dir} && uv run main.py'
         ssh_client.client.exec_command(f'tmux send-keys -t {TMUX_SESSION_NAME} "{command}" C-m')
-    try:
+
+
+    # Set up user termination thread
+    stop_event = threading.Event()
+
+    def wait_for_enter() -> None:
+        input()  # Waits until the user presses Enter
         print(f'{tmux_session_msg}')
-        while True:
+        stop_event.set()
+
+    input_thread = threading.Thread(target=wait_for_enter, daemon=True)
+    input_thread.start()
+
+    # tmux streaming
+    print(f'{tmux_session_msg}')
+    print('Press Enter to exit.')
+    try:
+        while not stop_event.is_set():
             line = remote_tmux_log.readline()
             if line:
                 sys.stdout.write(line)
                 sys.stdout.flush()
             else:
                 time.sleep(0.5)
-    except KeyboardInterrupt:
-        print(f'{tmux_session_msg}')
+    finally:
+        remote_tmux_log.close()
+        sftp_client.close()
+        print('tmux closed')
 
 
 def _install_tmux(ssh_client: SshClient) -> None:
