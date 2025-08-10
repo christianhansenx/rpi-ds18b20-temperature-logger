@@ -128,9 +128,10 @@ class SshClientHandler:
     def __enter__(self) -> SshClient:
         """Open a SSH connection."""
         print(f'Create SSH connection to {self._config['username']}@{self._config['hostname']}')
+        print()
         client = paramiko.SSHClient()
 
-        # S507 Paramiko call with policy set to automatically trust the unknown host key
+        # Linting: S507 Paramiko call with policy set to automatically trust the unknown host key
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())  # noqa: S507
 
         client.connect(
@@ -150,6 +151,7 @@ class SshClientHandler:
        """Close SSH connection."""
        if self._client:
             self._client.client.close()
+            print()
             print('SSH connection is closed')
 
 

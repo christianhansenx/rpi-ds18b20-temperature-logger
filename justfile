@@ -6,25 +6,25 @@ TOOLS_PATH := "tools"
 list-recipes:
     @just --list --unsorted
 
-# RPI: Checking about logger application is already running on Raspberry Pi device
+# RPI: Checking about application is already running on Raspberry Pi device
 check:
-    @uv run --quiet --project "{{TOOLS_PATH}}" python "{{TOOLS_PATH}}"/main.py --rpi-check-logger
+    @uv run --quiet --project "{{TOOLS_PATH}}" python "{{TOOLS_PATH}}"/tools.py --rpi-check-app
 
-# RPI: Killing running logger application on Raspberry Pi device
-stop:
-    @uv run --quiet --project "{{TOOLS_PATH}}" python "{{TOOLS_PATH}}"/main.py --rpi-kill-logger
+# RPI: Killing running application on Raspberry Pi device
+kill:
+    @uv run --quiet --project "{{TOOLS_PATH}}" python "{{TOOLS_PATH}}"/tools.py --rpi-kill-app
 
-# RPI: Starting logger application on Raspberry Pi device (first it will kill already running logger app) 
-start:
-    @uv run --quiet --project "{{TOOLS_PATH}}" python "{{TOOLS_PATH}}"/main.py --rpi-run-logger
+# RPI: Starting application on Raspberry Pi device (first it will kill already running app) 
+run:
+    @uv run --quiet --project "{{TOOLS_PATH}}" python "{{TOOLS_PATH}}"/tools.py --rpi-run-app
 
-# RPI: Copying logger application to Raspberry Pi device and then starting application
+# RPI: Copying application to Raspberry Pi device and then starting application
 sync:
-    @uv run --quiet --project "{{TOOLS_PATH}}" python "{{TOOLS_PATH}}"/main.py --rpi-copy-code
+    @uv run --quiet --project "{{TOOLS_PATH}}" python "{{TOOLS_PATH}}"/tools.py --rpi-copy-code
 
 # RPI: Live stream from Raspberry Pi device tmux session
 tmux:
-    @uv run --quiet --project "{{TOOLS_PATH}}" python "{{TOOLS_PATH}}"/main.py --rpi-tmux
+    @uv run --quiet --project "{{TOOLS_PATH}}" python "{{TOOLS_PATH}}"/tools.py --rpi-tmux
 
 # Check linting with ruff
 ruff:

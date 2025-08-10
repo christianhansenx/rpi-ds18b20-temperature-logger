@@ -1,7 +1,7 @@
 [project]
 name = "tools"
 version = "0.1.0"
-description = "Tools for Raspberry Pi Temperature Logger"
+description = "Tools for Raspberry Pi remote etc."
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [

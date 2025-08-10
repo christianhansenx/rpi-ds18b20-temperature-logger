@@ -1,5 +1,5 @@
 [project]
-name = "rpi-ds18b20-temperature-logger"
+name = "pi-ds18b20-temperature-logger"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"

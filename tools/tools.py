@@ -1,4 +1,4 @@
-"""Tools for TRPI Temperature Logger."""
+"""Tools for RPI Temperature Logger."""
 import argparse
 import errno
 import sys
@@ -8,57 +8,69 @@ from pathlib import Path
 
 from ssh_client import SshClient, SshClientHandler
 
-CONFIG_FILE = Path('rpi_host_config.yaml')
 LOCAL_PROJECT_DIRECTORY = 'rpi_ds18b20_temperature_logger'
-RPI_LOGGER_PROCESS_NAME = f'{LOCAL_PROJECT_DIRECTORY}/.venv/bin/python3 main.py'
+APPLICATION_FILE = 'temperature_logger.py'
 TMUX_SESSION_NAME = 'tlog'
 UPLOAD_EXCLUDES_FOLDERS = ['.venv', '.git', '.ruff_cache', '__pycache__']
 UPLOAD_EXCLUDES_FILES = []  # Add specific file names here if needed
+RPI_APPLICATION_PROCESS_NAME = f'{LOCAL_PROJECT_DIRECTORY}/.venv/bin/python3 {APPLICATION_FILE}'
+CONFIG_FILE = Path('rpi_host_config.yaml')
 
-# S108 Probable insecure usage of temporary file or directory: "/tmp/"
+# Linting: S108 Probable insecure usage of temporary file or directory: "/tmp/"
 TMUX_LOG_PATH = f'/tmp/{LOCAL_PROJECT_DIRECTORY}.tmux-log'  # noqa: S108
+
 
 class StartRpiTmuxError(Exception):
     """Could start tmux session on RPI."""
 
 
 class KillRpiProcessError(Exception):
-    """Could not kill logger application on RPI."""
+    """Could not kill application on RPI."""
 
 
 class InstallRpiTmuxError(Exception):
     """Could not install tmux on RPI."""
 
 
-def rpi_check_logger(ssh_client: SshClient, process_name: str, *, message_no_process: bool = True) -> list[str]:
+def rpi_check_running_app(ssh_client: SshClient, process_name: str, *, message_no_process: bool = True) -> list[str]:
     """Check about processes are running.
 
     return: list of running process id's
     """
-    find_pid_cmd = f'pgrep -f "{process_name}"'
-    stdin, stdout, stderr = ssh_client.client.exec_command(find_pid_cmd)
+    stdin, stdout, stderr = ssh_client.client.exec_command(f'pgrep -f "{process_name}"')
     proc_ids = stdout.read().decode('utf-8').strip().split('\n')
     valid_proc_ids = [pid for pid in proc_ids if pid]
     if valid_proc_ids:
         print(f'Process "{process_name}" running')
         print(f'Found existing PID(s): {", ".join(valid_proc_ids)}')
     elif message_no_process:
-        print(f'No existing process found for "{process_name}"')
+        print(f'No existing process found of "{ssh_client.connection} {process_name}"')
     return valid_proc_ids
 
 
-def rpi_kill_logger(ssh_client: SshClient, process_name: str, valid_proc_ids: list[str]) -> None:
-    """Stop logger application on RPI."""
-    if valid_proc_ids:
-        for pid in valid_proc_ids:
-            kill_cmd = f'kill {pid}'
-            stdin, stdout_kill, stderr_kill = ssh_client.client.exec_command(kill_cmd)
-            exit_status = stdout_kill.channel.recv_exit_status()
+def _rpi_check_process_id(ssh_client: SshClient, proc_id: str) -> bool:
+    """Check about process is running."""
+    stdin, stdout, stderr = ssh_client.client.exec_command(f'ps -p {proc_id}')
+    exit_status = stdout.channel.recv_exit_status()
+    return exit_status == 0
+
+
+def rpi_kill_app(ssh_client: SshClient, process_name: str, proc_ids: list[str], *, msg_no_kill: bool = True) -> None:
+    """Stop application on RPI."""
+    if not proc_ids:
+        if msg_no_kill:
+            print('No running process found, nothing to kill')
+        return
+    for pid in proc_ids:
+        if _rpi_check_process_id(ssh_client, proc_ids[0]):
+            stdin, stdout, stderr_kill = ssh_client.client.exec_command(f'kill {pid}')
+            exit_status = stdout.channel.recv_exit_status()
             if exit_status != 0:
                 error = f'Failed to kill PID {pid}: {stderr_kill.read().decode('utf-8').strip()}'
                 raise KillRpiProcessError(error)
-        time.sleep(2)
-        print(f'Successfully killed "{process_name}"')
+            time.sleep(0.5)
+    time.sleep(1)
+    print(f'Successfully killed "{process_name}"')
 
 
 def rpi_tmux(ssh_client: SshClient, *, restart_application: bool = False) -> None:
@@ -125,9 +137,9 @@ def _tmux_terminal(ssh_client: SshClient, *, restart_application: bool) -> None:
     # Start application (if required) and show tmux output in terminal
     if restart_application:
         remote_dir = f'/home/{ssh_client.username}/{LOCAL_PROJECT_DIRECTORY}'
-        command = f'cd {remote_dir} && uv run main.py'
+        command = f'cd {remote_dir} && uv run {APPLICATION_FILE}'
         ssh_client.client.exec_command(f'tmux send-keys -t {TMUX_SESSION_NAME} "{command}" C-m')
-
+        print(f'Application {APPLICATION_FILE} on {ssh_client.connection} has been started')
 
     # Set up user termination thread
     stop_event = threading.Event()
@@ -162,7 +174,7 @@ def _install_tmux(ssh_client: SshClient) -> None:
     stdin, stdout, stderr = ssh_client.client.exec_command('which tmux')
     exit_code = stdout.channel.recv_exit_status()
     if exit_code != 0:
-        print(f'Installing tmux on {ssh_client.client.connection}')
+        print(f'Installing tmux on {ssh_client.connection}')
         stdin, stdout, stderr = ssh_client.client.exec_command('sudo apt install tmux -y')
         stdout_output = stdout.read().decode()
         stderr_output = stderr.read().decode()
@@ -177,7 +189,7 @@ def _install_tmux(ssh_client: SshClient) -> None:
 
 
 def rpi_upload_app(ssh_client: SshClient) -> None:
-    """Upload logging application files to RPI."""
+    """Upload application files to RPI."""
     all_exclude_patterns = UPLOAD_EXCLUDES_FOLDERS + UPLOAD_EXCLUDES_FILES
     ssh_client.upload_recursive(LOCAL_PROJECT_DIRECTORY, all_exclude_patterns)
 
@@ -186,21 +198,21 @@ def main() -> None:
     """Call functions depending on script arguments."""
     print(f'Python version: {sys.version_info.major}.{sys.version_info.minor}')
 
-    parser = argparse.ArgumentParser(description='Raspberry Pi Temperature Logger Tools')
+    parser = argparse.ArgumentParser(description='Raspberry Pi Remote Tools etc.')
     parser.add_argument(
-        '--rpi-check-logger',
+        '--rpi-check-app',
         action='store_true',
         help='Check about logger application is already running on Raspberry Pi device',
     )
     parser.add_argument(
-        '--rpi-kill-logger',
+        '--rpi-kill-app',
         action='store_true',
-        help='Kill logger application on Raspberry Pi device',
+        help='Kill application on Raspberry Pi device',
     )
     parser.add_argument(
-        '--rpi-run-logger',
+        '--rpi-run-app',
         action='store_true',
-        help='Run logger application on Raspberry Pi device',
+        help='Run application on Raspberry Pi device',
     )
     parser.add_argument(
         '--rpi-copy-code',
@@ -214,29 +226,23 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    success = False
     with SshClientHandler(CONFIG_FILE) as ssh_client:
-        if args.rpi_check_logger:
-            rpi_check_logger(ssh_client, RPI_LOGGER_PROCESS_NAME)
-            success = True
-        if args.rpi_kill_logger:
-            proc_ids = rpi_check_logger(ssh_client, RPI_LOGGER_PROCESS_NAME, message_no_process=False)
-            rpi_kill_logger(ssh_client, RPI_LOGGER_PROCESS_NAME, proc_ids)
-            success = True
-        if args.rpi_run_logger:
-            proc_ids = rpi_check_logger(ssh_client, RPI_LOGGER_PROCESS_NAME, message_no_process=False)
-            rpi_kill_logger(ssh_client, RPI_LOGGER_PROCESS_NAME, proc_ids)
+        if args.rpi_check_app:
+            rpi_check_running_app(ssh_client, RPI_APPLICATION_PROCESS_NAME)
+        if args.rpi_kill_app:
+            proc_ids = rpi_check_running_app(ssh_client, RPI_APPLICATION_PROCESS_NAME, message_no_process=False)
+            rpi_kill_app(ssh_client, RPI_APPLICATION_PROCESS_NAME, proc_ids)
+        if args.rpi_run_app:
+            proc_ids = rpi_check_running_app(ssh_client, RPI_APPLICATION_PROCESS_NAME, message_no_process=False)
+            rpi_kill_app(ssh_client, RPI_APPLICATION_PROCESS_NAME, proc_ids, msg_no_kill=False)
             rpi_tmux(ssh_client, restart_application=True)
         if args.rpi_tmux:
             rpi_tmux(ssh_client)
         if args.rpi_copy_code:
             rpi_upload_app(ssh_client)
-            proc_ids = rpi_check_logger(ssh_client, RPI_LOGGER_PROCESS_NAME, message_no_process=False)
-            rpi_kill_logger(ssh_client, RPI_LOGGER_PROCESS_NAME, proc_ids)
+            proc_ids = rpi_check_running_app(ssh_client, RPI_APPLICATION_PROCESS_NAME, message_no_process=False)
+            rpi_kill_app(ssh_client, RPI_APPLICATION_PROCESS_NAME, proc_ids, msg_no_kill=False)
             rpi_tmux(ssh_client, restart_application=True)
-
-    if success:
-        print('\nSUCCESS!')
 
 
 if __name__ == '__main__':

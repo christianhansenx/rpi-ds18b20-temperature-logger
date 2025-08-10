@@ -1,1 +1,1 @@
-"""A collection of utilities for managing the RPI Temperature Logger."""
+"""A collection of utilities for managing the RPI remotely."""

@@ -41,6 +41,8 @@ To get a list of RPI tool commands then just execute ```just``` without argument
 
 Some of the connections to th RPI is using [tmux](https://github.com/tmux/tmux/wiki) terminal on the RPI. There is no need to install it - it will be done automatic from the tools commands.
 
+When running tmux from tools terminal, it can be stopped by pressing **enter** key.
+
 ## TODO
 
 - Use SQL
