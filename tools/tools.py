@@ -62,7 +62,7 @@ def rpi_kill_app(ssh_client: SshClient, process_name: str, proc_ids: list[str], 
             print('No running process found, nothing to kill')
         return
     for pid in proc_ids:
-        if _rpi_check_process_id(ssh_client, proc_ids[0]):
+        if _rpi_check_process_id(ssh_client, pid):
             stdin, stdout, stderr_kill = ssh_client.client.exec_command(f'kill {pid}')
             exit_status = stdout.channel.recv_exit_status()
             if exit_status != 0:
@@ -137,7 +137,7 @@ def _tmux_terminal(ssh_client: SshClient, *, restart_application: bool) -> None:
     # Start application (if required) and show tmux output in terminal
     if restart_application:
         remote_dir = f'/home/{ssh_client.username}/{LOCAL_PROJECT_DIRECTORY}'
-        command = f'cd {remote_dir} && uv run {APPLICATION_FILE}'
+        command = f'cd {remote_dir} && uv run --no-group dev {APPLICATION_FILE}'
         ssh_client.client.exec_command(f'tmux send-keys -t {TMUX_SESSION_NAME} "{command}" C-m')
         print(f'Application {APPLICATION_FILE} on {ssh_client.connection} has been started')
 

@@ -45,8 +45,8 @@ When running tmux from tools terminal, it can be stopped by pressing **enter** k
 
 ## TODO
 
-- Use SQL
-- Flask server
+- SQL (or https://github.com/ytyou/ticktock)
+- Flask server (or taipy)
 - activate w1 by CLI commands https://github.com/ronanguilloux/temperature-pi/blob/master/README.md
 - check this https://github.com/alberttxu/Raspberry-PI-Web-Temperature-Logger---ds18b20
 - ram disk for TMUX_LOG_PATH = f'/tmp/{LOCAL_PROJECT_DIRECTORY}.tmux-log'
